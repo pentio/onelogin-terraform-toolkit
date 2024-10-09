@@ -16,7 +16,7 @@ input_file = '$INPUT_FILE'
 output_file = '$OUTPUT_FILE'
 
 try:
-    products = defaultdict(set)
+    products = defaultdict(lambda: defaultdict(set))
 
     with open(input_file, 'r', newline='', encoding='utf-8-sig') as csvfile:
         reader = csv.reader(csvfile)
@@ -26,7 +26,8 @@ try:
                 product_name = row[0]
                 guid = row[2]
                 service_plan_id = row[4]
-                products[product_name].add(f"{guid}:{service_plan_id}")
+                friendly_names = row[5]
+                products[product_name][f"{guid}:{service_plan_id}"].add(friendly_names)
 
     with open(output_file, 'w', encoding='utf-8') as outfile:
         for product_name, guids in products.items():
@@ -34,8 +35,9 @@ try:
             outfile.write("  actions {\n")
             outfile.write('    action = "set_licenses"\n')
             outfile.write("    value  = [\n")
-            for guid in sorted(guids):
-                outfile.write(f'      "{guid}",\n')
+            for guid, friendly_names in sorted(guids.items()):
+                friendly_names_str = ", ".join(sorted(friendly_names))
+                outfile.write(f'      "{guid}",  # {friendly_names_str}\n')
             outfile.write("    ]\n")
             outfile.write("  }\n\n")
 
