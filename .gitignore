@@ -1,0 +1,9 @@
+# 認証情報
+.env
+*.tfvars
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
