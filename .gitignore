@@ -1,0 +1,14 @@
+# 認証情報
+.env
+*.tfvars
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# スクリプトの一時ファイル・生成物
+temp_config.tf
+product_licenses.csv
+product_actions.txt

@@ -1,0 +1,3 @@
+{"id":12345,"name":"規則 \"A\" \\ ${x} %{y}","match":"all","enabled":true,"position":3,
+ "conditions":[{"source":"has_role","operator":"ri","value":570882},{"source":"distinguished_name","operator":"~","value":"OU=Sales\\,DC=co"}],
+ "actions":[{"action":"set_amazonusername","expression":".*","value":["member_of"]},{"action":"set_licenses","value":["a:b","c:d"],"macro":"{firstname}"},{"action":"set_groups","value":null}]}

@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    name: 静的チェック（認証情報なし）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+      - name: シェルスクリプトの構文
+        run: |
+          bash -n import_onelogin_rules.sh
+          bash -n licence_generator.sh
+          bash -n tests/e2e.sh
+      - name: shellcheck
+        run: shellcheck -S warning import_onelogin_rules.sh tests/e2e.sh
+      - name: terraform fmt / validate
+        run: |
+          terraform fmt -check -recursive
+      - name: ルール生成（jq）の単体テストと、生成した HCL の validate
+        run: |
+          mkdir -p /tmp/v && cp providers.tf tests/fixtures/sample_rule.tf /tmp/v/
+          tests/generate_hcl_test.sh /tmp/v/generated.tf
+          cd /tmp/v
+          terraform init -input=false
+          ONELOGIN_CLIENT_ID=x ONELOGIN_CLIENT_SECRET=x ONELOGIN_API_URL=https://api.us.onelogin.com terraform validate
+
+  e2e:
+    name: 動作テスト（検証用テナント）
+    needs: static
+    # このリポジトリ内のブランチの PR、main への push、手動実行だけ。フォークからの PR には認証情報を渡さない
+    # 検証用テナントの設定（変数 ONELOGIN_E2E_API_URL）が無いときは実行しない
+    if: ${{ vars.ONELOGIN_E2E_API_URL != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # 検証用テナントは1つなので、同時に1つだけ実行する（実行中のものは止めない）
+    concurrency:
+      group: onelogin-e2e
+      cancel-in-progress: false
+    # 環境 onelogin-e2e に「承認者」を設定しておくと、承認されるまで認証情報は渡されない
+    environment: onelogin-e2e
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+      - name: 検証用テナントで動作テスト
+        env:
+          ONELOGIN_CLIENT_ID: ${{ secrets.ONELOGIN_E2E_CLIENT_ID }}
+          ONELOGIN_CLIENT_SECRET: ${{ secrets.ONELOGIN_E2E_CLIENT_SECRET }}
+          ONELOGIN_API_URL: ${{ vars.ONELOGIN_E2E_API_URL }}
+        run: tests/e2e.sh
