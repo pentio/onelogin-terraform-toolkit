@@ -98,3 +98,20 @@ CSV形式の製品ライセンス情報からTerraform用のアクションを�
 
 - プロバイダーのバージョン：定期的に [Terraform Registry](https://registry.terraform.io/providers/onelogin/onelogin/latest) で最新バージョンを確認し、`providers.tf` の `version` を更新して `terraform init -upgrade` を実行してください。
 - ライセンス情報：[Microsoft Entra ID のライセンスとサービス プランの一覧](https://learn.microsoft.com/ja-jp/entra/identity/users/licensing-service-plan-reference)から最新のCSVファイルをダウンロードし、`product_licenses.csv` を更新してください。
+
+## テスト（CI）
+
+`.github/workflows/ci.yml` で、PR のたびに次を実行します。
+
+- **静的チェック**（認証情報なし）：シェルスクリプトの構文と shellcheck、`terraform fmt`、ルール生成の単体テスト（`tests/generate_hcl_test.sh`）、生成した定義の `terraform validate`
+- **動作テスト**（検証用の OneLogin テナント）：`tests/e2e.sh` が、テスト用のロール・SAML アプリ・アプリルールを作成し、`import_onelogin_rules.sh` でインポートして、生成した定義と OneLogin の状態に差分が無いことを確認してから、必ず後片付け（destroy）します。リソース名は `ci-<実行ID>` で始まります。
+
+### 動作テストの設定（リポジトリの管理者）
+
+動作テストは、次を設定したときだけ実行されます（未設定なら、スキップされます）。**検証用のテナントでだけ**実行してください。本番のテナントの認証情報は設定しないでください。
+
+1. 検証用テナントで、必要な権限だけを持つ API クレデンシャルを作成する（アプリ・ロール・ルールの管理。「Manage All」は避ける）
+2. リポジトリの Settings → Environments で、環境 `onelogin-e2e` を作り、**Required reviewers（承認者）を設定する**（承認されるまで認証情報は渡されません）
+3. 環境 `onelogin-e2e` に、シークレット `ONELOGIN_E2E_CLIENT_ID`、`ONELOGIN_E2E_CLIENT_SECRET` と、変数 `ONELOGIN_E2E_API_URL`（例：`https://api.us.onelogin.com`）を登録する
+
+フォークからの PR には、認証情報は渡されません（動作テストは実行されません）。手元で実行するときは、同じ名前の環境変数（`ONELOGIN_CLIENT_ID`、`ONELOGIN_CLIENT_SECRET`、`ONELOGIN_API_URL`）を設定して `tests/e2e.sh` を実行します。
