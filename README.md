@@ -41,6 +41,8 @@ export ONELOGIN_API_URL=https://api.us.onelogin.com   # EU の場合は https://
 
 注意：
 - プロバイダーは、これらの認証情報からアクセストークンを自分で取得します。アクセストークンを変数やファイルで渡す必要はありません（v0.4.x まで使えた `apikey_auth` は、v0.5.0 で廃止されています）。
+- 以前の設定（`.env` の `CLIENT_ID`／`CLIENT_SECRET`／`SUBDOMAIN` や、`terraform.tfvars` のアクセストークン）からの移行：これらはもう読み込まれません。上の環境変数（`ONELOGIN_CLIENT_ID`、`ONELOGIN_CLIENT_SECRET`、`ONELOGIN_API_URL`）に置き換え、`terraform.tfvars` のトークンは削除してください。
+- `version = "~> 1.0"` は、`terraform init` のたびに最新の 1.x を選びます。1.x の中でも plan の挙動が変わる変更があるため、動作を固定したいときは、`terraform init` で作られる `.terraform.lock.hcl` をリポジトリに含めて共有するか、確認したバージョンを指定してください（例：`version = "1.11.0"`）。
 - 設定できる項目と各リソースの書き方は、[Terraform Registry](https://registry.terraform.io/providers/onelogin/onelogin/latest/docs) と[プロバイダーのリポジトリ](https://github.com/onelogin/terraform-provider-onelogin)（`docs/`、`examples/`）を参照してください。
 - 以前のバージョンから更新する場合は、先に[リリースノート](https://github.com/onelogin/terraform-provider-onelogin/releases)の破壊的変更（v1.0.0 ほか）を確認し、`terraform plan` の差分を確認してから適用してください。
 
@@ -62,7 +64,7 @@ OneLoginアプリケーションルールを読み出し、Terraformにインポ
 1. 環境変数の認証情報でアクセストークンを取得（表示・保存はしません）
 2. OneLogin APIからアプリケーションルールを取得
 3. ルールごとに `terraform import onelogin_app_rules.rule_<ルールID> <app_id>/<ルールID>` を実行
-4. インポートできたルールのリソース定義を指定された出力ファイルに書き込み
+4. インポートできたルールのリソース定義を指定された出力ファイルに書き込み（`actions` の `expression`・`macro`・`scriptlet` も含みます。文字列は HCL として正しくなるようにエスケープします）
 
 注意：
 - 実行前に、上記の環境変数（`ONELOGIN_CLIENT_ID`、`ONELOGIN_CLIENT_SECRET`、`ONELOGIN_API_URL`）を設定してください。
